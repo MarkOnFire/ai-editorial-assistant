@@ -17,4 +17,5 @@ This repository collects the working instructions and reference material used to
 - Review the backlog in `Possible improvements.md` during planning sessions and promote accepted ideas into real tasks.
 - If you add large binaries (PDFs, PNGs), verify they are under version-control limits or consider linking to an external CMS.
 - Document notable prompt changes (what was tweaked and why) inside the top of the new instruction file so future editors understand the intent.
-- The tools for short form video are very, very early — plan on using those reports exclusively for brainstorming or getting an initial draft of social copy together. 
+- The tools for short form video are very, very early — plan on using those reports exclusively for brainstorming or getting an initial draft of social copy together.
+- This branch is primarily here for archival purposes, shifted to an agent-approach in October 2025.
