@@ -4,46 +4,39 @@ An AI-powered workflow for transforming video transcripts into optimized metadat
 
 ## Quick Start
 
-### 1. Add Your Transcript
+> Prerequisite: start the watcher in a terminal (`python3 -m automation.watcher --config automation/config.yaml`) so file drops trigger the agents below.
+
+### 1. Drop a Transcript
 
 ```bash
 cp ~/path/to/your/transcript.txt transcripts/2WLI1203HD_ForClaude.txt
 ```
 
-### 2. Generate Brainstorming Document
+As soon as the file lands in `transcripts/`, the watcher spins up Brainstorming, Formatted Transcript, and Timestamp agents for that Media ID.
 
-In Claude Code:
-```
-/brainstorm
-```
+### 2. Review Auto-Generated Outputs
 
-### 3. Review & Draft in CMS
+Open `output/2WLI1203HD/01_brainstorming.md`, `05_formatted_transcript.md`, and `06_timestamp_report.md` to plan your copy and chapter markers.
 
-Open `output/2WLI1203HD/01_brainstorming.md` and use it to draft metadata in Media Manager.
+### 3. Trigger Copy Revision
 
-### 4. Get Revision Recommendations
-
-Take a screenshot of your draft, then:
+Save your draft metadata (screenshot or text) into the project’s drafts folder:
 ```bash
-cp ~/Screenshots/draft.png draft_copy/2WLI1203HD_draft.png
+cp ~/Screenshots/draft.png output/2WLI1203HD/drafts/20240212_draft.png
 ```
+Dropping a file here fires the revision agent and refreshes `02_copy_revision.md`.
 
-In Claude Code:
-```
-/revise 2WLI1203HD
-```
+### 4. Trigger Keyword Research (Optional)
 
-### 5. (Optional) SEO Research
-
-If you need keyword analysis:
+Place the SEMRush capture in the project’s semrush folder:
 ```bash
-cp ~/Screenshots/semrush.png semrush/2WLI1203HD_semrush.png
+cp ~/Screenshots/semrush.png output/2WLI1203HD/semrush/20240212_semrush.png
 ```
+The keyword agent generates `03_keyword_report.md` and `04_implementation.md` automatically.
 
-In Claude Code:
-```
-/research-keywords 2WLI1203HD
-```
+### 5. Iterate with `/revise`
+
+Use `/revise` in Claude Code to pick from the 15 most recent projects in `output/`, review the latest draft, and continue the interactive workflow.
 
 ---
 
@@ -51,54 +44,55 @@ In Claude Code:
 
 | Command | Description | Phase |
 |---------|-------------|-------|
-| `/brainstorm` | Generate initial title/description options from transcript | Phase 1 |
-| `/revise` | Review draft copy and provide revision recommendations | Phase 2 |
-| `/research-keywords` | Conduct SEO research and generate keyword reports | Phase 3 |
-| `/format-transcript` | Generate AP Style formatted transcript | Optional |
-| `/create-timestamps` | Generate chapter markers for 15+ min videos | Optional |
+| `/revise` | Lists the 15 most recent projects, then regenerates Phase 2 with the selected draft | Phase 2 |
+| `/research-keywords` | Manually reruns the keyword agent for the selected project | Phase 3 |
+| `/brainstorm` | Optional manual rerun of Phase 1 if you tweak the transcript | Phase 1 |
+| `/format-transcript` | Optional manual rerun of formatted transcript generation | Phase 4 |
+| `/create-timestamps` | Optional manual rerun of timestamp generation | Phase 4 |
 
 ---
 
 ## Folder Structure
 
 ```
-claude-editorial-assistant/
-├── transcripts/              # Drop raw transcripts here
+editorial-assistant/
+├── transcripts/                  # Drop raw transcripts here
 │   ├── 2WLI1203HD_ForClaude.txt
-│   └── archive/             # Move completed transcripts here
+│   └── archive/                  # Auto-archived after 90 days
 │
-├── draft_copy/              # Drop draft metadata screenshots here
-│   ├── 2WLI1203HD_draft.png
-│   └── archive/
-│
-├── semrush/                 # Drop SEMRush screenshots here (optional)
-│   ├── 2WLI1203HD_semrush.png
-│   └── archive/
-│
-├── output/                  # AI-generated reports (organized by Media ID)
+├── output/
+│   ├── archive/                  # Archived projects live here
 │   └── 2WLI1203HD/
 │       ├── 01_brainstorming.md
 │       ├── 02_copy_revision.md
 │       ├── 03_keyword_report.md
 │       ├── 04_implementation.md
 │       ├── 05_formatted_transcript.md
-│       └── 06_timestamp_report.md
+│       ├── 06_timestamp_report.md
+│       ├── drafts/               # Drop draft screenshots/text to trigger Phase 2
+│       ├── semrush/              # Drop SEMRush screenshots to trigger Phase 3
+│       └── workflow.json         # Run log used by automation + /revise picker
 │
-├── knowledge/               # Reference materials
+├── automation/                   # Watcher + archival scripts
+│   ├── config.yaml
+│   ├── watcher.py
+│   └── archive.py
+│
+├── knowledge/                    # Reference materials
 │   ├── ap_styleguide.pdf
 │   ├── Transcript Style Guide.pdf
 │   ├── WPM Generative AI Guidelines.pdf
 │   └── Media ID Prefixes.md
 │
-├── system_prompts/          # Modular prompts for each phase
-│   ├── current.md           # Full system prompt (legacy)
+├── system_prompts/
 │   ├── phase1_brainstorming.md
 │   ├── phase2_editing.md
 │   ├── phase3_analysis.md
+│   ├── phase4_transcript.md
+│   ├── phase4_timestamps.md
 │   └── archive/
 │
-└── .claude/commands/        # Claude Code slash commands
-    ├── brainstorm.md
+└── .claude/commands/
     ├── revise.md
     ├── research-keywords.md
     ├── format-transcript.md
@@ -111,77 +105,64 @@ claude-editorial-assistant/
 
 ### Phase 1: Research & Brainstorming
 
-**Input**: Video transcript
+**Trigger**: Transcript copied to `transcripts/`  
 **Output**: `01_brainstorming.md`
 
-Analyzes transcript and generates:
+The watcher automatically analyzes the transcript and produces:
 - 3 title options (80 char max)
 - 2 short description options (100 char max)
 - 2 long description options (350 char max)
 - 20 SEO keywords (direct + logical/implied)
 - Notable quotes and key information
 
-**Command**: `/brainstorm [transcript_path]`
+**Manual Rerun (optional)**: `/brainstorm [transcript_path]`
 
 ---
 
 ### Phase 2: Copy Revision
 
-**Input**: Transcript + Draft metadata screenshot
+**Trigger**: Draft file added to `output/<MEDIA_ID>/drafts/`  
 **Output**: `02_copy_revision.md`
 
-Reviews your draft and provides:
-- Side-by-side original vs. revised comparison
-- Clear reasoning for each edit
-- AP Style compliance checks
-- Program-specific formatting (University Place, Here and Now, etc.)
-- Updated keyword recommendations
+The revision agent:
+- Extracts draft metadata from the screenshot or text
+- Provides side-by-side original vs. revised copy
+- Explains each change with AP Style/program notes
+- Updates keyword recommendations when appropriate
 
-**Command**: `/revise [media_id or screenshot_path]`
+**Manual Flow**: `/revise` → pick a project → supply additional draft if needed
 
 ---
 
 ### Phase 3: SEO Analysis (Optional)
 
-**Input**: Transcript + SEMRush screenshot + Web research
+**Trigger**: SEMRush screenshot added to `output/<MEDIA_ID>/semrush/`  
 **Output**: `03_keyword_report.md` + `04_implementation.md`
 
-Conducts market research and generates:
+Delivers:
 - Platform-ready keyword list (ranked by search volume)
 - Trending keywords and competitive gaps
 - Platform-specific recommendations (YouTube, website, social)
 - Prioritized action items with timeline
 - Success metrics to track
 
-**Command**: `/research-keywords [media_id or screenshot_path]`
+**Manual Rerun**: `/research-keywords [media_id or screenshot_path]`
 
 ---
 
 ### Phase 4: Optional Outputs
 
+Both artifacts are created automatically alongside Phase 1 whenever a new transcript arrives.
+
 #### Formatted Transcript
-**Input**: Raw transcript
-**Output**: `05_formatted_transcript.md`
-
-AP Style formatted transcript with:
-- Full speaker names (first AND last) for every instance
-- Proper paragraph breaks
-- Non-verbal cues in brackets
-- Publication-ready formatting
-
-**Command**: `/format-transcript [media_id]`
+- **Output**: `05_formatted_transcript.md`
+- Includes full speaker names, paragraphing, and non-verbal cues per AP Style.
+- **Manual rerun**: `/format-transcript [media_id]`
 
 #### Timestamp Report
-**Input**: Transcript (15+ minute videos only)
-**Output**: `06_timestamp_report.md`
-
-Chapter markers for:
-- Media Manager (table format with start/end times)
-- YouTube (simple timestamp list)
-- 5-10 logical chapter breaks
-- Descriptive chapter titles
-
-**Command**: `/create-timestamps [media_id]`
+- **Output**: `06_timestamp_report.md`
+- Provides Media Manager and YouTube chapter lists with descriptive labels.
+- **Manual rerun**: `/create-timestamps [media_id]`
 
 ---
 
@@ -200,6 +181,11 @@ Transcripts follow PBS Wisconsin's Media ID system:
 - `2WLI1203HD_ForClaude.txt` - Wisconsin Life episode 1203, HD
 - `9UNP1972HD_REV20250804_ForClaude.txt` - University Place episode 1972, revised 2025-08-04
 - `6HNS_ForClaude.txt` - Here and Now Digital Short
+
+### Draft & Research Artifacts
+- Place draft screenshots or markdown in `output/<MEDIA_ID>/drafts/` using a timestamped suffix (e.g., `output/2WLI1203HD/drafts/2WLI1203HD_20240212_draft.png`).
+- Place SEMRush screenshots in `output/<MEDIA_ID>/semrush/` (e.g., `output/2WLI1203HD/semrush/2WLI1203HD_20240212_semrush.png`).
+- Automation keys off the Media ID prefix, so keep it at the start of every filename.
 
 ---
 
@@ -250,28 +236,30 @@ Transcripts follow PBS Wisconsin's Media ID system:
 
 ### Standard Video (e.g., Wisconsin Life Episode)
 
-1. **Add transcript** → `/brainstorm` → Review suggestions
-2. **Draft in CMS** → Screenshot → `/revise` → Implement edits
-3. **(Optional)** SEMRush research → `/research-keywords` → Optimize
-4. **Archive inputs** → Done!
+1. **Drop transcript** in `transcripts/` → watcher builds brainstorming, formatted transcript, and timestamps.
+2. **Draft in CMS** using `01_brainstorming.md` → save screenshot to `output/<MEDIA_ID>/drafts/` → automation refreshes `02_copy_revision.md` → implement edits.
+3. **(Optional)** capture SEMRush → save to `output/<MEDIA_ID>/semrush/` → automation writes keyword and implementation reports.
+4. **Run `/revise`** if you want an interactive review or to re-run Phase 2 manually.
+5. **Archival cron** retires the project automatically after 90 days.
 
 **Time**: ~10-15 minutes (vs. 30-45 minutes manual)
 
 ### Shortform Content (e.g., Digital Short)
 
-1. **Add transcript(s)** → `/brainstorm` → Get social-optimized copy
-2. **Draft in CMS** → Screenshot → `/revise` → Implement edits
-3. **Archive inputs** → Done!
+1. **Drop transcript(s)** → watcher generates brainstorming + formatted transcript immediately.
+2. **Draft & screenshot** → store in `output/<MEDIA_ID>/drafts/` → automation crafts quick revisions.
+3. **Optional**: `/revise` for ad-hoc edits or `/brainstorm` to fine-tune after manual tweaks.
+4. **Archival cron** cleans up in the background.
 
 **Time**: ~5-10 minutes per short
 
 ### Long-Form Educational (e.g., University Place Lecture)
 
-1. **Add transcript** → `/brainstorm` → Review suggestions
-2. **Draft in CMS** → Screenshot → `/revise` → Implement edits
-3. **SEMRush research** → `/research-keywords` → Optimize for educational search
-4. **(Optional)** `/create-timestamps` → Add chapter markers
-5. **Archive inputs** → Done!
+1. **Drop transcript** → auto outputs deliver brainstorming, formatted transcript, and timestamps.
+2. **Draft in CMS** → place screenshot in `drafts/` → automation issues revision guidance.
+3. **SEMRush research** → store capture in `semrush/` → automation publishes keyword + implementation reports.
+4. **Use `/revise`** for any interactive follow-up or manual re-runs.
+5. **Archival cron** files everything away after 90 days of inactivity.
 
 **Time**: ~15-20 minutes
 
@@ -279,16 +267,13 @@ Transcripts follow PBS Wisconsin's Media ID system:
 
 ## Archiving Workflow
 
-When you're done with a video:
+Automation handles cleanup for you. Add a cron/launchd job that runs:
 
 ```bash
-# Move inputs to archive
-mv transcripts/2WLI1203HD_ForClaude.txt transcripts/archive/
-mv draft_copy/2WLI1203HD_draft.png draft_copy/archive/
-mv semrush/2WLI1203HD_semrush.png semrush/archive/
+python3 automation/archive.py --config automation/config.yaml
 ```
 
-The `output/2WLI1203HD/` folder remains as your permanent record.
+Projects (and their transcripts) older than 90 days are moved into `output/archive/` and `transcripts/archive/`. Use `--dry-run` to preview upcoming moves. The `workflow.json` log travels with the project so you can resurrect it later if needed.
 
 ---
 
